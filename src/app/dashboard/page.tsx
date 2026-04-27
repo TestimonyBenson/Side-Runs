@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("runner");
   const [balance, setBalance] = useState(12500);
   
@@ -20,6 +23,16 @@ export default function Dashboard() {
   // Modal State for Editing
   const [editingTask, setEditingTask] = useState<any>(null);
 
+  // Guard: Kick unauthorized users back to login
+  useEffect(() => {
+    const loggedIn = localStorage.getItem("sideRunsUser") === "true";
+    if (!loggedIn) {
+      router.push("/login");
+    } else {
+      setIsLoading(false);
+    }
+  }, [router]);
+
   const handleWithdraw = () => {
     if (balance > 0) {
       alert(`Processing withdrawal of ₦${balance.toLocaleString()} to your saved account...`);
@@ -36,28 +49,34 @@ export default function Dashboard() {
     alert("Task marked as completed! Waiting on poster verification.");
   };
 
-  // Trigger the edit modal
   const openEditModal = (task: any) => {
-    setEditingTask({ ...task }); // Create a copy of the task to edit
+    setEditingTask({ ...task });
   };
 
-  // Handle changes inside the modal
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setEditingTask({ ...editingTask, [e.target.name]: e.target.value });
   };
 
-  // Save the edited task
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
     setPosterTasks(posterTasks.map(t => t.id === editingTask.id ? editingTask : t));
-    setEditingTask(null); // Close modal
+    setEditingTask(null);
     alert("Task updated successfully!");
   };
+
+  // Prevent UI flash before redirecting
+  if (isLoading) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <p className="text-xl font-bold text-gray-500 animate-pulse">Loading Dashboard...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       
-      {/* Header & Stats (Unchanged) */}
+      {/* Header & Stats */}
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Welcome back, Testimony!</h1>
         <p className="text-gray-600">Here is what is happening with your errands today.</p>
@@ -67,7 +86,7 @@ export default function Dashboard() {
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <p className="text-sm font-medium text-gray-500 mb-1">Available Balance</p>
           <p className="text-3xl font-extrabold text-blue-600 mb-2">₦{balance.toLocaleString()}</p>
-          <button onClick={handleWithdraw} className="text-sm font-semibold text-blue-600 hover:text-blue-800">
+          <button onClick={handleWithdraw} className="text-sm font-semibold text-blue-600 hover:text-blue-800 transition">
             Withdraw Funds &rarr;
           </button>
         </div>
@@ -83,39 +102,39 @@ export default function Dashboard() {
 
       {/* Tabs */}
       <div className="border-b border-gray-200 mb-8">
-        <nav className="-mb-px flex space-x-8">
+        <nav className="-mb-px flex space-x-8 overflow-x-auto">
           <button
             onClick={() => setActiveTab("runner")}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition ${activeTab === "runner" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500"}`}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition ${activeTab === "runner" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
           >
             My Accepted Runs
           </button>
           <button
             onClick={() => setActiveTab("poster")}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition ${activeTab === "poster" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500"}`}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition ${activeTab === "poster" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}
           >
             My Posted Errands
           </button>
         </nav>
       </div>
 
-      {/* Content */}
+      {/* Content Area */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         {activeTab === "runner" ? (
           <ul className="divide-y divide-gray-200">
             {runnerTasks.map((task) => (
               <li key={task.id} className="p-6 hover:bg-gray-50 transition">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <h3 className="text-lg font-bold text-gray-900">{task.title}</h3>
                     <p className="text-sm text-gray-500 mt-1">
                       Status: <span className={`font-semibold ${task.status.includes('Completed') ? 'text-green-600' : task.status.includes('Verification') ? 'text-blue-600' : 'text-yellow-600'}`}>{task.status}</span>
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-left sm:text-right">
                     <p className="text-lg font-extrabold text-blue-600">₦{task.price}</p>
                     {task.status === "In Progress" && (
-                      <button onClick={() => handleMarkCompleted(task.id)} className="mt-2 text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded-md hover:bg-gray-200 font-medium transition">
+                      <button onClick={() => handleMarkCompleted(task.id)} className="mt-2 text-sm bg-gray-100 text-gray-700 px-3 py-1.5 rounded-md hover:bg-gray-200 font-medium transition">
                         Mark Completed
                       </button>
                     )}
@@ -128,12 +147,12 @@ export default function Dashboard() {
           <ul className="divide-y divide-gray-200">
             {posterTasks.map((task) => (
               <li key={task.id} className="p-6 hover:bg-gray-50 transition">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <h3 className="text-lg font-bold text-gray-900">{task.title}</h3>
                     <p className="text-sm text-gray-500 mt-1">Runner: <span className="font-semibold text-gray-900">{task.status}</span></p>
                   </div>
-                  <div className="text-right flex flex-col items-end">
+                  <div className="text-left sm:text-right flex flex-col sm:items-end">
                     <p className="text-lg font-extrabold text-gray-900 mb-2">₦{Number(task.price).toLocaleString()}</p>
                     <button onClick={() => openEditModal(task)} className="text-sm bg-blue-50 text-blue-700 px-4 py-1.5 rounded-md hover:bg-blue-100 font-medium transition border border-blue-200">
                       Edit Task
@@ -149,7 +168,7 @@ export default function Dashboard() {
       {/* EDIT TASK MODAL OVERLAY */}
       {editingTask && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 sm:p-8">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Edit Errand</h2>
               <button onClick={() => setEditingTask(null)} className="text-gray-400 hover:text-gray-600">
@@ -179,7 +198,7 @@ export default function Dashboard() {
                 <button type="button" onClick={() => setEditingTask(null)} className="px-5 py-2 text-gray-700 font-medium hover:bg-gray-100 rounded-lg transition">
                   Cancel
                 </button>
-                <button type="submit" className="px-5 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition">
+                <button type="submit" className="px-5 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition shadow-sm">
                   Save Changes
                 </button>
               </div>
