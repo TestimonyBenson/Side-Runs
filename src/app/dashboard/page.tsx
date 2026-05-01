@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -25,12 +26,16 @@ export default function Dashboard() {
 
   // Guard: Kick unauthorized users back to login
   useEffect(() => {
-    const loggedIn = localStorage.getItem("sideRunsUser") === "true";
-    if (!loggedIn) {
-      router.push("/login");
-    } else {
-      setIsLoading(false);
-    }
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/login");
+      } else {
+        setIsLoading(false);
+      }
+    };
+    
+    checkUser();
   }, [router]);
 
   const handleWithdraw = () => {

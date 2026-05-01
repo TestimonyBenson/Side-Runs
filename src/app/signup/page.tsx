@@ -2,20 +2,51 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
 export default function Signup() {
   const [isLoading, setIsLoading] = useState(false);
   const [accountType, setAccountType] = useState("poster"); // 'poster' or 'runner'
 
- const handleSignup = (e: React.FormEvent) => {
-  e.preventDefault();
-  setIsLoading(true);
-  setTimeout(() => {
-    setIsLoading(false);
-    localStorage.setItem("sideRunsUser", "true"); // Mock auth state
-    window.location.href = "/"; // Redirect to home
-  }, 1000);
-};
+  const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const fullName = formData.get("fullName") as string;
+    const email = formData.get("email") as string;
+    const phone = formData.get("phone") as string;
+    const password = formData.get("password") as string;
+
+    try {
+      // 1. Create the user in Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      // 2. Save their extra details to our public.profiles table
+      if (authData.user) {
+        const { error: profileError } = await supabase.from("profiles").insert({
+          id: authData.user.id,
+          full_name: fullName,
+          phone: phone,
+          role: accountType,
+        });
+
+        if (profileError) throw profileError;
+      }
+
+      // 3. Redirect on success
+      window.location.href = "/";
+    } catch (error: any) {
+      alert(error.message || "An error occurred during signup.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-10">
@@ -27,22 +58,10 @@ export default function Signup() {
 
         {/* Account Type Toggle */}
         <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
-          <button
-            type="button"
-            onClick={() => setAccountType("poster")}
-            className={`flex-1 py-2 text-sm font-semibold rounded-md transition ${
-              accountType === "poster" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
+          <button type="button" onClick={() => setAccountType("poster")} className={`flex-1 py-2 text-sm font-semibold rounded-md transition ${accountType === "poster" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
             I need things done
           </button>
-          <button
-            type="button"
-            onClick={() => setAccountType("runner")}
-            className={`flex-1 py-2 text-sm font-semibold rounded-md transition ${
-              accountType === "runner" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
+          <button type="button" onClick={() => setAccountType("runner")} className={`flex-1 py-2 text-sm font-semibold rounded-md transition ${accountType === "runner" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
             I want to be a Runner
           </button>
         </div>
@@ -50,59 +69,27 @@ export default function Signup() {
         <form onSubmit={handleSignup} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-            <input 
-              type="text" 
-              required 
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="John Doe"
-            />
+            <input type="text" name="fullName" required className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="John Doe" />
           </div>
-
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+            <input type="tel" name="phone" required className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="+234 ..." />
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-            <input 
-              type="email" 
-              required 
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="you@example.com"
-            />
+            <input type="email" name="email" required className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="you@example.com" />
           </div>
-          <div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-  <input 
-    type="tel" 
-    required 
-    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-    placeholder="+234 ..."
-  />
-</div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input 
-              type="password" 
-              required 
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Create a strong password"
-            />
+            <input type="password" name="password" required minLength={6} className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Minimum 6 characters" />
           </div>
-
-          <button 
-            type="submit" 
-            disabled={isLoading}
-            className={`w-full text-white font-bold py-3 rounded-lg transition ${
-              isLoading ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 shadow-sm"
-            }`}
-          >
+          <button type="submit" disabled={isLoading} className={`w-full text-white font-bold py-3 rounded-lg transition ${isLoading ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 shadow-sm"}`}>
             {isLoading ? "Creating account..." : "Create Account"}
           </button>
         </form>
 
         <p className="mt-6 text-center text-sm text-gray-600">
-          Already have an account?{" "}
-          <Link href="/login" className="font-semibold text-blue-600 hover:text-blue-500">
-            Log in
-          </Link>
+          Already have an account? <Link href="/login" className="font-semibold text-blue-600 hover:text-blue-500">Log in</Link>
         </p>
       </div>
     </div>
